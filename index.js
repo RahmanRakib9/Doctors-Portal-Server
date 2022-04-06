@@ -2,10 +2,12 @@ const express = require('express')
 const app = express()
 const port = process.env.PORT || 5000;
 const cors = require('cors');
+const bodyParser = require('body-parser')
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
 app.use(cors());
-require('dotenv').config()
+app.use(bodyParser.json())
+require('dotenv').config();
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tjr1x.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
@@ -15,10 +17,27 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 async function run() {
      try {
           await client.connect();
-          console.log('db connected');
+          const database = client.db('doctors_portal');
+          const appointmentsCollection = database.collection('appointments');
 
-          
-          
+          //post data to db
+          app.post('/appointments', async (req, res) => {
+               const appointment = req.body;
+               const result = await appointmentsCollection.insertOne(appointment);
+
+               res.json(result);
+          })
+
+          //get data from db
+          app.get('/appointments', async (req, res) => {
+               const email = req.query.email;
+               const date = new Date(req.query.date).toLocaleDateString();
+               const query = { email: email, date: date }
+
+               const cursor = appointmentsCollection.find(query);
+               const appointments = await cursor.toArray();
+               res.json(appointments);
+          })
 
      }
      finally {
@@ -26,12 +45,6 @@ async function run() {
      }
 }
 run().catch(console.dir)
-
-client.connect(err => {
-     const collection = client.db("test").collection("devices");
-     // perform actions on the collection object
-     client.close();
-});
 
 
 app.get('/', (req, res) => {
